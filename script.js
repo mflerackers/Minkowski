@@ -62,6 +62,10 @@ class Vector {
 		return a.x * b.x + a.y * b.y
 	}
 
+	static cross(a, b) {
+		return a.x * b.y - a.y * b.x
+	}
+
 	static min(a, b) {
 		return new Vector(Math.min(a.x, b.x), Math.min(a.y, b.y))
 	}
@@ -76,6 +80,68 @@ class Vector {
 }
 
 Vector.ZERO = new Vector(0, 0)
+
+function rayCastEdge(originA, endA, originB, endB) {
+	const r = Vector.sub(endA, originA)
+	const s = Vector.sub(endB, originB)
+
+	const det = Vector.cross(r, s)
+
+	if (det == 0) {
+		// Co-linear
+		return Number.POSITIVE_INFINITY
+	}
+
+	const dir = Vector.sub(originB, originA)
+
+	const t1 = Vector.cross(dir, s) / det
+	if (0 > t1 || t1 > 1) {
+		// Outside segment 1
+		return Number.POSITIVE_INFINITY
+	}
+
+	const t2 = Vector.cross(dir, r) / det
+	if (0 > t2 || t2 > 1) {
+		// Outside segment 2
+		return Number.POSITIVE_INFINITY
+	}
+
+	return t1
+}
+
+function rayCastCircle(origin, direction, center, radius) {
+	const a = Vector.dot(direction, direction)
+	const centerToOrigin = Vector.sub(origin, center)
+	const b = 2 * Vector.dot(direction, centerToOrigin)
+	const c = Vector.dot(centerToOrigin, centerToOrigin) - radius * radius
+	const det = b * b - 4 * a * c
+
+	if ((a <= Number.EPSILON) || (det < 0)) {
+		return Number.POSITIVE_INFINITY
+	}
+	else if (det == 0) {
+		let t = -b / (2 * a)
+		return (t >= 0) && (t <= 1) ? t : Number.POSITIVE_INFINITY
+	}
+	else {
+		let t1 = (-b + Math.sqrt(det)) / (2 * a)
+		let t2 = (-b - Math.sqrt(det)) / (2 * a)
+		if ((t1 >= 0) && (t1 <= 1)) {
+			if ((t2 >= 0) && (t2 <= 1)) {
+				return Math.min(t1, t2)
+			}
+			else {
+				return t1
+			}
+		}
+		else if ((t2 >= 0) && (t2 <= 1)) {
+			return t2
+		}
+		else {
+			return Number.POSITIVE_INFINITY
+		}
+	}
+}
 
 /**
  * Subclasses need to implement four methods:
@@ -140,23 +206,27 @@ class Shape {
 	solveCollisions(other, dt) {
 		let s = other.sum(this)
 		if (s.contains(Vector.ZERO)) {
+			ctx.fillText(`contains in solveCollisions`, 10, 40)
 			let p = s.closestPoint(Vector.ZERO)
 			this.center = Vector.add(this.center, p)
 		}
 		else {
+			ctx.fillText(`raycasting in solveCollisions`, 10, 40)
 			// Velocity at which this approaches other
 			let relativeMotion = Vector.sub(this.velocity, other.velocity)
-    		let h = this.rayCast(Vector.ZERO, relativeMotion)
-			//console.log(h)
+			ctx.fillText(`${relativeMotion.x}, ${relativeMotion.y}`, 10, 110)
+    		let h = s.rayCast(Vector.ZERO, relativeMotion)
+			ctx.fillText(`${h}`, 10, 70)
 
     		if (h < Number.POSITIVE_INFINITY) {
 				// Only move until the collision
 				this.center = Vector.add(this.center, Vector.mul(this.velocity, dt * h))
 				other.center = Vector.add(other.center, Vector.mul(other.velocity, dt * h))
-				// 
-				let tangent = relativeMotion.normalized.tangent
-				this.velocity = Vector.dot(this.velocity, tangent) * tangent
-				other.velocity = Vector.dot(other.velocity, tangent) * tangent
+				// Should use normal here, not tangent
+				//let tangent = relativeMotion.normalized.tangent
+				//ctx.fillText(`${tangent.x}, ${tangent.y}`, 10, 80)
+				//this.velocity = Vector.dot(this.velocity, tangent) * tangent
+				//other.velocity = Vector.dot(other.velocity, tangent) * tangent*/
 			}
 			else {
 				// Just move
@@ -222,37 +292,7 @@ class Circle extends Shape {
 	}
 
 	rayCast(origin, direction) {
-		const a = Vector.dot(direction, direction)
-		const centerToOrigin = Vector.sub(origin, this.center)
-		const b = 2 * Vector.dot(direction, centerToOrigin)
-		const c = Vector.dot(centerToOrigin, centerToOrigin) - this.radius * this.radius
-		const det = b * b - 4 * a * c
-
-		if ((a <= Number.EPSILON) || (det < 0)) {
-			return Number.POSITIVE_INFINITY
-		}
-		else if (det == 0) {
-			let t = -b / (2 * a)
-			return (t >= 0) && (t <= 1) ? t : Number.POSITIVE_INFINITY
-		}
-		else {
-			let t1 = (-b + Math.sqrt(det)) / (2 * a)
-			let t2 = (-b - Math.sqrt(det)) / (2 * a)
-			if ((t1 >= 0) && (t1 <= 1)) {
-				if ((t2 >= 0) && (t2 <= 1)) {
-					return Math.min(t1, t2)
-				}
-				else {
-					return t1
-				}
-			}
-			else if ((t2 >= 0) && (t2 <= 1)) {
-				return t2
-			}
-			else {
-				return Number.POSITIVE_INFINITY
-			}
-		}
+		return rayCastCircle(origin, direction, this.center, this.radius)
 	}
 
 	sum(other) {
@@ -354,7 +394,32 @@ class RoundRect extends Shape {
 	}
 
 	rayCast(origin, direction) {
-		
+		let end = Vector.add(origin, direction)
+    	let minT = rayCastEdge(origin, end, 
+							   new Vector(this.left, this.top + this.radius),
+							   new Vector(this.left, this.bottom - this.radius))
+    	let t = rayCastEdge(origin, end, 
+							   new Vector(this.left + this.radius, this.bottom),
+							   new Vector(this.right - this.radius, this.bottom))
+    	if (t < minT) { minT = t }
+    	t = rayCastEdge(origin, end, 
+							   new Vector(this.right, this.top + this.radius),
+							   new Vector(this.right, this.bottom - this.radius))
+    	if (t < minT) { minT = t }
+    	t = rayCastEdge(origin, end, 
+							   new Vector(this.left + this.radius, this.top),
+							   new Vector(this.right - this.radius, this.top))
+    	if (t < minT) { minT = t }
+		t = rayCastCircle(origin, direction, new Vector(this.left + this.radius, this.top + this.radius), this.radius)
+		if (t < minT) { minT = t }
+		t = rayCastCircle(origin, direction, new Vector(this.right - this.radius, this.top + this.radius), this.radius)
+		if (t < minT) { minT = t }
+		t = rayCastCircle(origin, direction, new Vector(this.right - this.radius, this.bottom - this.radius), this.radius)
+		if (t < minT) { minT = t }
+		t = rayCastCircle(origin, direction, new Vector(this.left + this.radius, this.bottom - this.radius), this.radius)
+		if (t < minT) { minT = t }
+		ctx.fillText(`${t}`, 10, 50)
+    	return minT
 	}
 }
 
@@ -439,39 +504,14 @@ class AABB extends Shape {
 
 	rayCast(origin, direction) {
     	let end = Vector.add(origin, direction)
-    	let minT = AABB.rayCastEdge(origin, end, this.leftTop, this.leftBottom)
-    	let x = AABB.rayCastEdge(origin, end, this.leftBottom, this.rightBottom)
-    	if (x < minT) { minT = x }
-    	x = AABB.rayCastEdge(origin, end, this.rightBottom, this.rightTop)
-    	if (x < minT) { minT = x }
-    	x = AABB.rayCastEdge(origin, end, this.rightTop, this.leftTop)
-    	if (x < minT) { minT = x }
+    	let minT = rayCastEdge(origin, end, this.leftTop, this.leftBottom)
+    	let t = rayCastEdge(origin, end, this.leftBottom, this.rightBottom)
+    	if (t < minT) { minT = t }
+    	t = rayCastEdge(origin, end, this.rightBottom, this.rightTop)
+    	if (t < minT) { minT = t }
+    	t = rayCastEdge(origin, end, this.rightTop, this.leftTop)
+    	if (t < minT) { minT = t }
     	return minT
-	}
-
-	static rayCastEdge(originA, endA, originB, endB) {
-    	const r = Vector.sub(endA, originA)
-    	const s = Vector.sub(endB, originB)
-
-    	const numerator = Vector.dot(Vector.sub(originB, originA), r)
-    	const denominator = Vector.dot(r, s)
-
-    	if (numerator == 0 && denominator == 0) {
-			// Co-linear
-        	return Number.POSITIVE_INFINITY;
-    	}
-    	if (denominator == 0) {
-			// Parallel
-        	return Number.POSITIVE_INFINITY;
-    	}
-
-    	const u = numerator / denominator;
-    	const t = Vector.dot(Vector.sub(originB, originA), s) / denominator;
-    	if ((t >= 0) && (t <= 1) && (u >= 0) && (u <= 1)) {
-			return t;
-		}
-		// Outside range
-		return Number.POSITIVE_INFINITY;
 	}
 
 	sum(other) {
@@ -491,9 +531,9 @@ class AABB extends Shape {
 	}
 }
 
-//let a = new AABB(new Vector(200, 200), 50, 50)
+let a = new AABB(new Vector(200, 200), 50, 50)
 let b = new AABB(new Vector(250, 250), 50, 50)
-let a = new Circle(new Vector(200, 200), 50)
+//let a = new Circle(new Vector(200, 200), 50)
 //let b = new Circle(new Vector(250, 250), 50)
 //let c = a.sum(b)
 //console.log(c, a.intersects(b))
@@ -534,13 +574,15 @@ function animate() {
   	try {
 		ctx.clearRect(0, 0, 640, 480)
 		//a.update(0.33)
-		//a.solveCollisions(b, 0.33)
+		a.solveCollisions(b, 0.33)
 		a.draw()
 		b.draw()
 		let c = a.sum(b)
 		c.draw()
-		let p = c.closestPoint(Vector.ZERO)
-		ctx.fillRect(p.x-2, p.y-2, 4, 4)
+		let po = c.closestPoint(Vector.ZERO)
+		ctx.fillRect(po.x-2, po.y-2, 4, 4)
+		ctx.fillText(`${p.x}, ${p.y} ${a.contains(new Vector(p.x, p.y))}`, 10, 90)
+		ctx.fillText(`${a.rayCast(new Vector(p.x, p.y), new Vector(0, 10))}`, 10, 130)
 		requestAnimationFrame(animate)
 	}
 	catch (e) {
