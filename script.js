@@ -522,19 +522,20 @@ class AABB extends Shape {
 							this.hh + other.hh)
 		}
 		else if (other instanceof Circle) {
-			// The Minkowski sum of a circle and a box is a rounded rectangle
+			// The Minkowski sum of a box and a circle is a rounded rectangle
 			return new RoundRect(Vector.sub(this.center, other.center), 
-											this.radius + other.hw, 
-											this.radius + other.hh,
-											this.radius)
+											other.radius + this.hw, 
+											other.radius + this.hh,
+											other.radius)
 		}
 	}
 }
 
-let a = new AABB(new Vector(200, 200), 50, 50)
+//let a = new AABB(new Vector(200, 200), 50, 50)
 let b = new AABB(new Vector(250, 250), 50, 50)
-//let a = new Circle(new Vector(200, 200), 50)
+let a = new Circle(new Vector(200, 200), 50)
 //let b = new Circle(new Vector(250, 250), 50)
+//let a = new RoundRect(new Vector(200, 200), 50, 50, 10)
 //let c = a.sum(b)
 //console.log(c, a.intersects(b))
 
