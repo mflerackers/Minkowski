@@ -447,6 +447,13 @@ class RoundRect extends Shape {
 											this.hh + other.radius,
 											this.radius + other.radius)
 		}
+		else if (other instanceof RoundRect) {
+			// The Minkowski sum of two rounded rectangles is a rounded rectangle
+			return new RoundRect(Vector.sub(this.center, other.center),
+											this.hw + other.hw,
+											this.hh + other.hh,
+											this.radius + other.radius)
+		}
 		else {
 			throw `sum is not implemented for ${this.constructor.name} and ${other.constructor.name}`
 		}
@@ -574,8 +581,9 @@ class AABB extends Shape {
 //let a = new AABB(new Vector(200, 200), 50, 50)
 //let b = new AABB(new Vector(250, 250), 50, 50)
 //let a = new Circle(new Vector(200, 200), 50)
-let b = new Circle(new Vector(250, 250), 50)
+//let b = new Circle(new Vector(250, 250), 50)
 let a = new RoundRect(new Vector(200, 200), 50, 50, 20)
+let b = new RoundRect(new Vector(250, 250), 50, 50, 20)
 //let c = a.sum(b)
 //console.log(c, a.intersects(b))
 
