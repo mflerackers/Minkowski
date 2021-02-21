@@ -307,6 +307,16 @@ class Circle extends Shape {
 											this.radius + other.hh,
 											this.radius)
 		}
+		else if (other instanceof RoundRect) {
+			// The Minkowski sum of a circle and a rounded rectangle is a rounded rectangle
+			return new RoundRect(Vector.sub(this.center, other.center),
+											this.radius + other.hw, 
+											this.radius + other.hh,
+											this.radius + other.radius)
+		}
+		else {
+			throw `sum is not implemented for ${this.constructor.name} and ${other.constructor.name}`
+		}
 	}
 }
 
@@ -337,15 +347,15 @@ class RoundRect extends Shape {
 
 	draw() {
 		ctx.beginPath()
-		ctx.moveTo(this.left + this.radius, this.top)
-		ctx.lineTo(this.right - this.radius, this.top)
-		ctx.quadraticCurveTo(this.right, this.top, this.right, this.top + this.radius)
-		ctx.lineTo(this.right, this.bottom - this.radius)
-		ctx.quadraticCurveTo(this.right, this.bottom, this.right - this.radius, this.bottom)
-		ctx.lineTo(this.left + this.radius, this.bottom)
-		ctx.quadraticCurveTo(this.left, this.bottom, this.left, this.bottom - this.radius)
-		ctx.lineTo(this.left, this.top + this.radius)
-		ctx.quadraticCurveTo(this.left, this.top, this.left + this.radius, this.top)
+		ctx.moveTo(this.left + this.radius + 0.5, this.top + 0.5)
+		ctx.lineTo(this.right - this.radius + 0.5, this.top + 0.5)
+		ctx.quadraticCurveTo(this.right, this.top, this.right + 0.5, this.top + this.radius + 0.5)
+		ctx.lineTo(this.right + 0.5, this.bottom - this.radius + 0.5)
+		ctx.quadraticCurveTo(this.right, this.bottom, this.right - this.radius + 0.5, this.bottom + 0.5)
+		ctx.lineTo(this.left + this.radius + 0.5, this.bottom + 0.5)
+		ctx.quadraticCurveTo(this.left, this.bottom, this.left + 0.5, this.bottom - this.radius + 0.5)
+		ctx.lineTo(this.left + 0.5, this.top + this.radius + 0.5)
+		ctx.quadraticCurveTo(this.left, this.top, this.left + this.radius + 0.5, this.top + 0.5)
 		ctx.stroke()
 	}
 
@@ -420,6 +430,26 @@ class RoundRect extends Shape {
 		if (t < minT) { minT = t }
 		ctx.fillText(`${t}`, 10, 50)
     	return minT
+	}
+
+	sum(other) {
+		if (other instanceof AABB) {
+			// The Minkowski sum of a rounded rectangle and a box is a rounded rectangle
+			return new RoundRect(Vector.sub(this.center, other.center), 
+											this.hw + other.hw, 
+											this.hh + other.hh,
+											this.radius)
+		}
+		else if (other instanceof Circle) {
+			// The Minkowski sum of a rounded rectangle and a circle is a rounded rectangle
+			return new RoundRect(Vector.sub(this.center, other.center),
+											this.hw + other.radius, 
+											this.hh + other.radius,
+											this.radius + other.radius)
+		}
+		else {
+			throw `sum is not implemented for ${this.constructor.name} and ${other.constructor.name}`
+		}
 	}
 }
 
@@ -528,14 +558,24 @@ class AABB extends Shape {
 											other.radius + this.hh,
 											other.radius)
 		}
+		else if (other instanceof RoundRect) {
+			// The Minkowski sum of a box and a rounded rectangle is a rounded rectangle
+			return new RoundRect(Vector.sub(this.center, other.center), 
+											this.hw + other.hw, 
+											this.hh + other.hh,
+											other.radius)
+		}
+		else {
+			throw `sum is not implemented for ${this.constructor.name} and ${other.constructor.name}`
+		}
 	}
 }
 
 //let a = new AABB(new Vector(200, 200), 50, 50)
-let b = new AABB(new Vector(250, 250), 50, 50)
-let a = new Circle(new Vector(200, 200), 50)
-//let b = new Circle(new Vector(250, 250), 50)
-//let a = new RoundRect(new Vector(200, 200), 50, 50, 10)
+//let b = new AABB(new Vector(250, 250), 50, 50)
+//let a = new Circle(new Vector(200, 200), 50)
+let b = new Circle(new Vector(250, 250), 50)
+let a = new RoundRect(new Vector(200, 200), 50, 50, 20)
 //let c = a.sum(b)
 //console.log(c, a.intersects(b))
 
