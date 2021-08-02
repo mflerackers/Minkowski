@@ -214,6 +214,7 @@ class Shape {
 			ctx.fillText(`raycasting in solveCollisions`, 10, 40)
 			// Velocity at which this approaches other
 			let relativeMotion = Vector.sub(this.velocity, other.velocity)
+			relativeMotion = Vector.mul(relativeMotion, dt)
 			ctx.fillText(`${relativeMotion.x}, ${relativeMotion.y}`, 10, 110)
     		let h = s.rayCast(Vector.ZERO, relativeMotion)
 			ctx.fillText(`${h}`, 10, 70)
@@ -223,10 +224,10 @@ class Shape {
 				this.center = Vector.add(this.center, Vector.mul(this.velocity, dt * h))
 				other.center = Vector.add(other.center, Vector.mul(other.velocity, dt * h))
 				// Should use normal here, not tangent
-				//let tangent = relativeMotion.normalized.tangent
-				//ctx.fillText(`${tangent.x}, ${tangent.y}`, 10, 80)
-				//this.velocity = Vector.dot(this.velocity, tangent) * tangent
-				//other.velocity = Vector.dot(other.velocity, tangent) * tangent*/
+				/*let tangent = relativeMotion.normalized.tangent
+				ctx.fillText(`${tangent.x}, ${tangent.y}`, 10, 80)
+				this.velocity = Vector.mul(tangent, Vector.dot(this.velocity, tangent)) 
+				other.velocity = Vector.mul(tangent, Vector.dot(other.velocity, tangent))*/
 			}
 			else {
 				// Just move
